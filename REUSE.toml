@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = ["options.py"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Fabio Forni <development@redaril.me>"
+SPDX-License-Identifier = "GPL-3.0-or-later"

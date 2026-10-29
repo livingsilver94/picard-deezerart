@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+
+[tool.ruff]
+exclude = ["options.py"]
+
+[tool.ruff.lint]
+ignore = ["N999"]

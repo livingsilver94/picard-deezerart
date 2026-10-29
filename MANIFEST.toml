@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+api = ["3.0", "3.1"]
+description = "Download cover arts from Deezer"
+name = "Deezerart"
+uuid = "c76b1a8c-ea0d-476b-9d31-3552be6e1955"
+
+authors = ["Fabio Forni"]
+categories = ["coverart"]
+homepage = "https://github.com/livingsilver94/picard-deezerart"
+license = "GPL-3.0-or-later"
+license_url = "https://www.gnu.org/licenses/gpl-3.0.html"
+report_bugs_to = "https://github.com/livingsilver94/picard-deezerart/issues"
