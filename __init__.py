@@ -13,7 +13,7 @@ from picard.plugin3.api import (
 from picard.util.astrcmp import astrcmp
 
 from . import deezer
-from .deezer import Client, SearchOptions, obj
+from .deezer import Client, obj
 from .options import Ui_Form
 
 DEFAULT_SIMILARITY_THRESHOLD = 0.6
@@ -84,9 +84,7 @@ class Provider(CoverArtProvider):
 
     def _start_search(self):
         if not self._retry_search:
-            search_opts = SearchOptions(
-                artist=self._artist(), album=self.metadata["album"]
-            )
+            search_opts = self._artist() + ", " + self.metadata["album"]
         else:
             try:
                 track = self.release["media"][0]["tracks"][1]["title"]
@@ -94,10 +92,10 @@ class Provider(CoverArtProvider):
                 self.error("cannot find a track name to retry a search. No cover found")
                 self._finish_waiting()
                 return
-            search_opts = SearchOptions(artist=self._artist(), track=track)
+            search_opts = self._artist() + ", " + track
         self._start_request(
             "Searching Deezer for album cover",
-            lambda callback: self.client.advanced_search(search_opts, callback),
+            lambda callback: self.client.search(search_opts, callback),
             self._queue_from_search,
         )
 

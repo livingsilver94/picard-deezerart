@@ -38,8 +38,8 @@ class Client:
     def __init__(self, webservice: WebService):
         self.webservice = webservice
 
-    def advanced_search(
-        self, options: SearchOptions, callback: SearchCallback
+    def search(
+        self, options: str | SearchOptions, callback: SearchCallback
     ) -> PendingRequest:
         def handler(document: bytes, _: QNetworkReply, error: RequestError):
             if error:
