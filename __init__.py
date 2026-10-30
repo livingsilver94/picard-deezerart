@@ -24,7 +24,7 @@ def is_similar(
 ) -> bool:
     if str1 in str2:
         return True
-    return astrcmp(str1, str2) >= min_similarity
+    return astrcmp(str1.lower(), str2.lower()) >= min_similarity
 
 
 class OptionsPage(ProviderOptions):
