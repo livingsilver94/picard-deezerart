@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from itertools import count
+from functools import partial
 from typing import Any, override
 
 from picard.plugin3.api import (
@@ -11,6 +11,7 @@ from picard.plugin3.api import (
     ProviderOptions,
 )
 from picard.util.astrcmp import astrcmp
+from picard.webservice import PendingRequest
 
 from . import deezer
 from .deezer import Client, obj
@@ -56,33 +57,89 @@ class Provider(CoverArtProvider):
         super().__init__(coverart)
         self.client = Client(self.api.web_service)
         self._retry_search = False
-        self._request_ids = count()
-        self._pending_requests = 0
-        self._waiting_for_requests = False
 
     @override
     def queue_images(self):
         urls = []
 
-        def append_deezer_url(url):
+        def append_deezer_url(url: str):
             if deezer.is_deezer_url(url):
                 urls.append(url)
 
         self.match_url_relations(["free streaming"], append_deezer_url)
-        self._pending_requests = 0
-        self._waiting_for_requests = True
         if urls:
             for url in urls:
-                self._start_request(
-                    "Fetching Deezer album from URL relation",
-                    lambda callback, url=url: self.client.obj_from_url(url, callback),
-                    self._queue_from_url,
-                )
+                self._fetch_from_url(url)
         else:
-            self._start_search()
+            self._fetch_by_searching()
         return self.QueueState.WAIT
 
-    def _start_search(self):
+    def _fetch_from_url(self, url: str):
+        def on_response(album: obj.APIObject | None, error):
+            try:
+                if error:
+                    self.error(f"could not get Deezer API object: {error}")
+                    return
+                if not isinstance(album, obj.Album):
+                    self.error("API object is not an album")
+                    return
+                cover_url = album.cover_url(
+                    obj.CoverSize(self.api.global_config.setting["deezerart_size"])
+                )
+                self.queue_put(CoverArtImage(cover_url))
+                self.log_debug("queued cover using a URL relation")
+            finally:
+                self.next_in_queue()
+
+        self._start_request(
+            "Fetching Deezer album from URL relation",
+            partial(self.client.obj_from_url, url),
+            on_response,
+        )
+
+    def _fetch_by_searching(self):
+        def on_response(results: list[obj.APIObject], error):
+            if error:
+                self.error(f"could not fetch search results: {error}")
+                self.next_in_queue()
+                return
+            if len(results) == 0:
+                if self._retry_search:
+                    self.error("no results found")
+                    self.next_in_queue()
+                    return
+                self._retry_search = True
+                self._fetch_by_searching()
+                return
+            album = self.metadata["album"]
+            min_similarity = self.api.global_config.setting["deezerart_min_similarity"]
+            for result in results:
+                if not isinstance(result, obj.Track):
+                    continue
+                if not is_similar(self._artist(), result.artist.name, min_similarity):
+                    self.log_debug(
+                        "artist similarity below threshold: %r ~ %r",
+                        self._artist(),
+                        result.artist.name,
+                    )
+                    continue
+                if not is_similar(album, result.album.title, min_similarity):
+                    self.log_debug(
+                        "album similarity below threshold: %r ~ %r",
+                        album,
+                        result.album.title,
+                    )
+                    continue
+                cover_url = result.album.cover_url(
+                    obj.CoverSize(self.api.global_config.setting["deezerart_size"])
+                )
+                self.queue_put(CoverArtImage(cover_url))
+                self.log_debug("queued cover using a Deezer search")
+                self.next_in_queue()
+                return
+            self.error("no result matched the criteria")
+            self.next_in_queue()
+
         if not self._retry_search:
             search_opts = self._artist() + ", " + self.metadata["album"]
         else:
@@ -90,40 +147,39 @@ class Provider(CoverArtProvider):
                 track = self.release["media"][0]["tracks"][1]["title"]
             except (IndexError, KeyError):
                 self.error("cannot find a track name to retry a search. No cover found")
-                self._finish_waiting()
+                self.next_in_queue()
                 return
             search_opts = self._artist() + ", " + track
+
         self._start_request(
             "Searching Deezer for album cover",
-            lambda callback: self.client.search(search_opts, callback),
-            self._queue_from_search,
+            partial(self.client.search, str(search_opts)),
+            on_response,
         )
 
-    def _start_request(self, description, request_factory, callback):
-        task_id = f"deezer-{next(self._request_ids)}"
-        self._pending_requests += 1
+    def _start_request(
+        self,
+        description: str,
+        factory,
+        callback,
+    ) -> None:
+        task_id = f"deezer-{self.album}"
 
-        def on_response(*args):
+        def on_response(*args: Any, **kwargs: Any):
             try:
-                callback(*args)
+                callback(*args, **kwargs)
             finally:
                 self.api.complete_album_task(self.album, task_id)
-                self._pending_requests -= 1
-                if self._pending_requests == 0:
-                    self._finish_waiting()
+
+        def create_request() -> PendingRequest:
+            return factory(on_response)
 
         self.api.add_album_task(
             self.album,
             task_id,
             description,
-            request_factory=lambda: request_factory(on_response),
-            blocking=True,
+            request_factory=create_request,
         )
-
-    def _finish_waiting(self):
-        if self._waiting_for_requests:
-            self._waiting_for_requests = False
-            self.next_in_queue()
 
     @override
     def error(self, msg):
@@ -131,59 +187,6 @@ class Provider(CoverArtProvider):
 
     def log_debug(self, msg: Any, *args):
         self.api.logger.debug(self._log_prefix + msg, *args)
-
-    def _queue_from_url(self, album: obj.APIObject | None, error):
-        if error:
-            self.error(f"could not get Deezer API object: {error}")
-            return
-        if not isinstance(album, obj.Album):
-            self.error("API object is not an album")
-            return
-        cover_url = album.cover_url(
-            obj.CoverSize(self.api.global_config.setting["deezerart_size"])
-        )
-        self.queue_put(CoverArtImage(cover_url))
-        self.log_debug("queued cover using a URL relation")
-
-    def _queue_from_search(self, results: list[obj.APIObject], error):
-        if error:
-            self.error(f"could not fetch search results: {error}")
-            return
-        if len(results) == 0:
-            if self._retry_search:
-                self.error("no results found")
-                return
-            self._retry_search = True
-            self._start_search()
-            return
-        artist = self._artist()
-        album = self.metadata["album"]
-        settings = self.api.global_config.setting
-        min_similarity = settings["deezerart_min_similarity"]
-        for result in results:
-            if not isinstance(result, obj.Track):
-                continue
-            if not is_similar(artist, result.artist.name, min_similarity):
-                self.log_debug(
-                    "artist similarity below threshold: %r ~ %r",
-                    artist,
-                    result.artist.name,
-                )
-                continue
-            if not is_similar(album, result.album.title, min_similarity):
-                self.log_debug(
-                    "album similarity below threshold: %r ~ %r",
-                    album,
-                    result.album.title,
-                )
-                continue
-            cover_url = result.album.cover_url(
-                obj.CoverSize(settings["deezerart_size"])
-            )
-            self.queue_put(CoverArtImage(cover_url))
-            self.log_debug("queued cover using a Deezer search")
-            return
-        self.error("no result matched the criteria")
 
     def _artist(self) -> str:
         # If there are many artists, we want to search
