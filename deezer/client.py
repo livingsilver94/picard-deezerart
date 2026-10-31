@@ -3,7 +3,6 @@
 
 import json
 from collections.abc import Callable
-from pathlib import PurePosixPath
 from typing import NamedTuple
 from urllib.parse import urlsplit, urlunsplit
 
