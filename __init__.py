@@ -163,7 +163,7 @@ class Provider(CoverArtProvider):
         factory,
         callback,
     ) -> None:
-        task_id = f"deezer-{self.album}"
+        task_id = self.metadata["musicbrainz_releasegroupid"]
 
         def on_response(*args: Any, **kwargs: Any):
             try:
