@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 api = ["3.0", "3.1"]
-description = "Download cover arts from Deezer"
+description = "Download cover art from Deezer."
 name = "Deezerart"
 uuid = "c76b1a8c-ea0d-476b-9d31-3552be6e1955"
 
