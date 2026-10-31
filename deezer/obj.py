@@ -3,8 +3,11 @@
 
 import enum
 import json
+import typing
 from collections.abc import Mapping, MutableMapping
 from typing import Any, ClassVar
+
+from picard.plugin3.api import t_
 
 
 class APIObject:
@@ -49,6 +52,20 @@ class CoverSize(enum.StrEnum):
     MEDIUM = "medium"
     BIG = "big"
     LARGE = "xl"
+
+    def tr(self):
+        match self.name:
+            case CoverSize.THUMBNAIL.name:
+                string = t_("options.cover_size.thumbnail", "Thumbnail")
+            case CoverSize.SMALL.name:
+                string = t_("options.cover_size.small", "Small")
+            case CoverSize.MEDIUM.name:
+                string = t_("options.cover_size.medium", "Medium")
+            case CoverSize.BIG.name:
+                string = t_("options.cover_size.big", "Big")
+            case CoverSize.LARGE.name:
+                string = t_("options.cover_size.large", "Large")
+        return typing.cast(str, string)
 
 
 class Album(APIObject):

@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+"error.network" = "Impossibile scaricare l'oggetto API: {reason}"
+"error.no_results" = "Nessun risultato trovato"
+"error.wrong_api_object" = "l'oggetto API ricevuto non è \"{expected}\""
+"manifest.description" = "Scarica immagini di copertina da Deezer."
+"manifest.name" = "Deezerart"
+"options.cover_size.big" = "Grandi"
+"options.cover_size.large" = "Enormi"
+"options.cover_size.medium" = "Medie"
+"options.cover_size.small" = "Piccole"
+"options.cover_size.thumbnail" = "Miniature"
+"qt.Form.label.cover_size" = "Dimensioni delle immagini:"
+"qt.Form.label.similarity_threshold" = "Somiglianza minima per i risultati della ricerca:"

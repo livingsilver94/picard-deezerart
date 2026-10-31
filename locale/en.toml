@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+"error.network" = "could not get Deezer API object: {reason}"
+"error.no_results" = "no results found"
+"error.wrong_api_object" = "the API object received is not \"{expected}\""
+"manifest.description" = "Download cover art from Deezer."
+"manifest.name" = "Deezerart"
+"options.cover_size.big" = "Big"
+"options.cover_size.large" = "Large"
+"options.cover_size.medium" = "Medium"
+"options.cover_size.small" = "Small"
+"options.cover_size.thumbnail" = "Thumbnail"
+"qt.Form.label.cover_size" = "Cover art size:"
+"qt.Form.label.similarity_threshold" = "Minimum similarity threshold for search results:"

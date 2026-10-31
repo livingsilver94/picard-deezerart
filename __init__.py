@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Fabio Forni <development@redaril.me>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from enum import Enum
 from functools import partial
 from typing import Any, override
 
@@ -9,6 +10,7 @@ from picard.plugin3.api import (
     CoverArtProvider,
     PluginApi,
     ProviderOptions,
+    t_,
 )
 from picard.util.astrcmp import astrcmp
 from picard.webservice import PendingRequest
@@ -35,7 +37,7 @@ class OptionsPage(ProviderOptions):
 
     def load(self):
         for s in obj.CoverSize:
-            self.ui.size.addItem(str(s.name).title(), userData=s.value)
+            self.ui.size.addItem(self.api.tr(s.tr()), userData=s.value)
         settings = self.api.global_config.setting
         self.ui.size.setCurrentIndex(self.ui.size.findData(settings["deezerart_size"]))
         self.ui.min_similarity.setValue(int(settings["deezerart_min_similarity"] * 100))
@@ -46,6 +48,17 @@ class OptionsPage(ProviderOptions):
         settings["deezerart_min_similarity"] = (
             float(self.ui.min_similarity.value()) / 100.0
         )
+
+
+class Error(Enum):
+    NETWORK = t_(
+        "error.network",
+        "could not get Deezer API object: {reason}",
+    )
+    WRONG_OBJECT = t_(
+        "error.wrong_api_object", 'the API object received is not "{expected}"'
+    )
+    NO_RESULTS = t_("error.no_results", "no results found")
 
 
 class Provider(CoverArtProvider):
@@ -78,10 +91,13 @@ class Provider(CoverArtProvider):
         def on_response(album: obj.APIObject | None, error):
             try:
                 if error:
-                    self.error(f"could not get Deezer API object: {error}")
+                    self._error(
+                        Error.NETWORK,
+                        reason=error,
+                    )
                     return
                 if not isinstance(album, obj.Album):
-                    self.error("API object is not an album")
+                    self._error(Error.WRONG_OBJECT, expected="album")
                     return
                 cover_url = album.cover_url(
                     obj.CoverSize(self.api.global_config.setting["deezerart_size"])
@@ -100,12 +116,15 @@ class Provider(CoverArtProvider):
     def _fetch_by_searching(self):
         def on_response(results: list[obj.APIObject], error):
             if error:
-                self.error(f"could not fetch search results: {error}")
+                self._error(
+                    Error.NETWORK,
+                    reason=error,
+                )
                 self.next_in_queue()
                 return
             if len(results) == 0:
                 if self._retry_search:
-                    self.error("no results found")
+                    self._error(Error.NO_RESULTS)
                     self.next_in_queue()
                     return
                 self._retry_search = True
@@ -137,7 +156,7 @@ class Provider(CoverArtProvider):
                 self.log_debug("queued cover using a Deezer search")
                 self.next_in_queue()
                 return
-            self.error("no result matched the criteria")
+            self._error(Error.NO_RESULTS)
             self.next_in_queue()
 
         if not self._retry_search:
@@ -146,7 +165,10 @@ class Provider(CoverArtProvider):
             try:
                 track = self.release["media"][0]["tracks"][1]["title"]
             except (IndexError, KeyError):
-                self.error("cannot find a track name to retry a search. No cover found")
+                self.log_debug(
+                    "cannot find a track name to retry a search. No cover found"
+                )
+                self._error(Error.NO_RESULTS)
                 self.next_in_queue()
                 return
             search_opts = self._artist() + ", " + track
@@ -181,12 +203,11 @@ class Provider(CoverArtProvider):
             request_factory=create_request,
         )
 
-    @override
-    def error(self, msg):
-        super().error(self._log_prefix + msg)
-
     def log_debug(self, msg: Any, *args):
         self.api.logger.debug(self._log_prefix + msg, *args)
+
+    def _error(self, err: Error, **kwargs: Any) -> None:
+        self.error(self._log_prefix + self.api.tr(err.value, **kwargs))
 
     def _artist(self) -> str:
         # If there are many artists, we want to search

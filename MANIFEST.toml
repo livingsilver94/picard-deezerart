@@ -12,3 +12,6 @@ homepage = "https://github.com/livingsilver94/picard-deezerart"
 license = "GPL-3.0-or-later"
 license_url = "https://www.gnu.org/licenses/gpl-3.0.html"
 report_bugs_to = "https://github.com/livingsilver94/picard-deezerart/issues"
+
+[description_i18n]
+it = "Scarica immagini di copertina da Deezer."
