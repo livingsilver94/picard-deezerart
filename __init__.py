@@ -212,7 +212,7 @@ class Provider(CoverArtProvider):
     def _artist(self) -> str:
         # If there are many artists, we want to search
         # the album in Deezer with just one as keyword.
-        # Deezerart may not specify all the artists
+        # Deezer may not list all the artists
         # MusicBrainz does, or it may use different separators.
         return self.metadata.getraw("~albumartists")[0]
 
