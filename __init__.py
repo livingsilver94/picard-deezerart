@@ -63,6 +63,7 @@ class Error(Enum):
 
 class Provider(CoverArtProvider):
     NAME = "Deezer"
+    TITLE = "Deezer"
     OPTIONS = OptionsPage
 
     LOG_PREFIX = "Deezerart: "
