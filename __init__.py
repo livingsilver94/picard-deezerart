@@ -64,7 +64,8 @@ class Error(Enum):
 class Provider(CoverArtProvider):
     NAME = "Deezer"
     OPTIONS = OptionsPage
-    _log_prefix = "Deezerart: "
+
+    LOG_PREFIX = "Deezerart: "
 
     def __init__(self, coverart):
         super().__init__(coverart)
@@ -204,10 +205,10 @@ class Provider(CoverArtProvider):
         )
 
     def log_debug(self, msg: Any, *args):
-        self.api.logger.debug(self._log_prefix + msg, *args)
+        self.api.logger.debug(self.LOG_PREFIX + msg, *args)
 
     def _error(self, err: Error, **kwargs: Any) -> None:
-        self.error(self._log_prefix + self.api.tr(err.value, **kwargs))
+        self.error(self.LOG_PREFIX + self.api.tr(err.value, **kwargs))
 
     def _artist(self) -> str:
         # If there are many artists, we want to search
